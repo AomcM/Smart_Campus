@@ -1,0 +1,204 @@
+{% extends "base.html" %}
+{% block page_title %}Grades{% endblock %}
+{% block extra_head %}
+<style>
+.filter-bar { display:flex; gap:12px; align-items:flex-end; flex-wrap:wrap; margin-bottom:20px; padding:16px 20px; background:#fff; border:1px solid #e2e6ec; border-radius:10px; }
+.filter-bar .form-group { flex:1; min-width:160px; margin:0; }
+.filter-bar label { font-size:11px; font-weight:600; color:#8b94a3; display:block; margin-bottom:5px; }
+.group-header { padding:10px 16px; background:#f6f7f9; border-bottom:1px solid #e2e6ec; font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:0.05em; color:#5b6470; display:flex; justify-content:space-between; align-items:center; }
+.group-avg { font-size:13px; font-weight:700; text-transform:none; letter-spacing:0; }
+.mb-4 { margin-bottom:16px; }
+</style>
+{% endblock %}
+{% block content %}
+<div class="page-header">
+  <div><h1>Grades</h1><p>{{ grades|length }} record(s)</p></div>
+</div>
+
+{% if session.role in ('admin','teacher') %}
+<!-- Add / Update Grade -->
+<div class="card mb-4">
+  <strong style="font-size:14px;display:block;margin-bottom:14px;">Add / Update Grade</strong>
+  <p style="font-size:12px;color:#8b94a3;margin:0 0 12px;">If a grade for the same student, module and type already exists, it will be updated automatically.</p>
+  <form method="POST" action="{{ url_for('grade_add') }}">
+    <div style="display:flex;gap:12px;flex-wrap:wrap;align-items:flex-end;">
+      <div class="form-group" style="flex:1;min-width:160px;">
+        <label>Student</label>
+        <select name="student_id" required>
+          {% for s in students %}
+          <option value="{{ s.id }}">{{ s.first_name }} {{ s.last_name }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="form-group" style="flex:1;min-width:160px;">
+        <label>Module</label>
+        <select name="module_id" required>
+          {% for m in modules %}
+          <option value="{{ m.id }}">{{ m.code }} — {{ m.title }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="form-group" style="flex:1;min-width:100px;">
+        <label>Grade (/20)</label>
+        <input type="number" name="value" min="0" max="20" step="0.25" placeholder="14.5" required>
+      </div>
+      <div class="form-group" style="flex:1;min-width:120px;">
+        <label>Type</label>
+        <select name="type">
+          <option>Exam</option><option>TD</option><option>TP</option><option>CC</option>
+        </select>
+      </div>
+      <div style="padding-bottom:1px;">
+        <button type="submit" class="btn btn-primary">Save Grade</button>
+      </div>
+    </div>
+  </form>
+</div>
+
+<!-- Filter bar -->
+<form method="GET" action="{{ url_for('grades') }}">
+  <div class="filter-bar">
+    <div class="form-group">
+      <label>Filter by Student</label>
+      <select name="student_id" onchange="this.form.submit()">
+        <option value="">All students</option>
+        {% for s in students %}
+        <option value="{{ s.id }}" {% if filter_student == s.id|string %}selected{% endif %}>
+          {{ s.first_name }} {{ s.last_name }}
+        </option>
+        {% endfor %}
+      </select>
+    </div>
+    <div class="form-group">
+      <label>Filter by Module</label>
+      <select name="module_id" onchange="this.form.submit()">
+        <option value="">All modules</option>
+        {% for m in modules %}
+        <option value="{{ m.id }}" {% if filter_module == m.id|string %}selected{% endif %}>
+          {{ m.code }} — {{ m.title }}
+        </option>
+        {% endfor %}
+      </select>
+    </div>
+    {% if filter_student or filter_module %}
+    <div>
+      <label style="visibility:hidden;">x</label>
+      <a href="{{ url_for('grades') }}" class="btn" style="display:block;">Clear filters</a>
+    </div>
+    {% endif %}
+  </div>
+</form>
+{% endif %}
+
+<!-- Grades table -->
+{% if grades %}
+
+  {# --- Filtered by MODULE only: group rows by student --- #}
+  {% if filter_module and not filter_student %}
+    {% set seen_students = [] %}
+    {% for g in grades %}{% if g.student_name not in seen_students %}{% set _ = seen_students.append(g.student_name) %}{% endif %}{% endfor %}
+
+    {% for sname in seen_students %}
+      {% set sg = grades | selectattr('student_name','equalto',sname) | list %}
+      {% set avg = (sg | sum(attribute='value')) / sg|length %}
+      <div class="table-wrap mb-4">
+        <div class="group-header">
+          {{ sname }}
+          <span class="group-avg" style="color:{% if avg>=12 %}oklch(0.45 0.15 155){% elif avg>=10 %}oklch(0.45 0.13 250){% else %}oklch(0.55 0.18 25){% endif %};">
+            Avg: {{ "%.2f"|format(avg) }}/20
+          </span>
+        </div>
+        <table>
+          <thead><tr><th>Type</th><th>Grade</th>{% if session.role in ('admin','teacher') %}<th>Actions</th>{% endif %}</tr></thead>
+          <tbody>
+            {% for g in sg %}
+            <tr>
+              <td><span class="badge badge-muted">{{ g.type }}</span></td>
+              <td><strong style="color:{% if g.value>=10 %}oklch(0.45 0.15 155){% else %}oklch(0.55 0.18 25){% endif %};">{{ g.value }}/20</strong></td>
+              {% if session.role in ('admin','teacher') %}
+              <td>
+                <form method="POST" action="{{ url_for('grade_delete', gid=g.id) }}" onsubmit="return confirm('Delete this grade?')">
+                  <button class="btn btn-sm btn-danger">Delete</button>
+                </form>
+              </td>
+              {% endif %}
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    {% endfor %}
+
+  {# --- Filtered by STUDENT only (or student role): group rows by module --- #}
+  {% elif filter_student or session.role == 'student' %}
+    {% set seen_modules = [] %}
+    {% for g in grades %}{% if g.module_code not in seen_modules %}{% set _ = seen_modules.append(g.module_code) %}{% endif %}{% endfor %}
+
+    {% for mcode in seen_modules %}
+      {% set mg = grades | selectattr('module_code','equalto',mcode) | list %}
+      {% set avg = (mg | sum(attribute='value')) / mg|length %}
+      <div class="table-wrap mb-4">
+        <div class="group-header">
+          <span><span class="badge badge-info" style="font-size:12px;text-transform:none;">{{ mcode }}</span>&nbsp; {{ mg[0].title }}</span>
+          <span class="group-avg" style="color:{% if avg>=12 %}oklch(0.45 0.15 155){% elif avg>=10 %}oklch(0.45 0.13 250){% else %}oklch(0.55 0.18 25){% endif %};">
+            Avg: {{ "%.2f"|format(avg) }}/20
+          </span>
+        </div>
+        <table>
+          <thead><tr><th>Type</th><th>Grade</th>{% if session.role in ('admin','teacher') %}<th>Actions</th>{% endif %}</tr></thead>
+          <tbody>
+            {% for g in mg %}
+            <tr>
+              <td><span class="badge badge-muted">{{ g.type }}</span></td>
+              <td><strong style="color:{% if g.value>=10 %}oklch(0.45 0.15 155){% else %}oklch(0.55 0.18 25){% endif %};">{{ g.value }}/20</strong></td>
+              {% if session.role in ('admin','teacher') %}
+              <td>
+                <form method="POST" action="{{ url_for('grade_delete', gid=g.id) }}" onsubmit="return confirm('Delete this grade?')">
+                  <button class="btn btn-sm btn-danger">Delete</button>
+                </form>
+              </td>
+              {% endif %}
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    {% endfor %}
+
+  {# --- No filter: flat table --- #}
+  {% else %}
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr><th>Student</th><th>Module</th><th>Grade</th><th>Type</th>{% if session.role in ('admin','teacher') %}<th>Actions</th>{% endif %}</tr>
+        </thead>
+        <tbody>
+          {% for g in grades %}
+          <tr>
+            <td>{{ g.student_name }}</td>
+            <td><span class="badge badge-info">{{ g.module_code }}</span> {{ g.title }}</td>
+            <td><strong style="color:{% if g.value>=10 %}oklch(0.45 0.15 155){% else %}oklch(0.55 0.18 25){% endif %};">{{ g.value }}/20</strong></td>
+            <td><span class="badge badge-muted">{{ g.type }}</span></td>
+            {% if session.role in ('admin','teacher') %}
+            <td>
+              <form method="POST" action="{{ url_for('grade_delete', gid=g.id) }}" onsubmit="return confirm('Delete this grade?')">
+                <button class="btn btn-sm btn-danger">Delete</button>
+              </form>
+            </td>
+            {% endif %}
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  {% endif %}
+
+{% else %}
+<div class="table-wrap">
+  <div class="empty-state">
+    <strong>No grades found</strong>
+    <p>{% if filter_student or filter_module %}Try clearing your filters.{% endif %}</p>
+  </div>
+</div>
+{% endif %}
+{% endblock %}

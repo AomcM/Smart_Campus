@@ -1,0 +1,324 @@
+{% extends "base.html" %}
+{% block page_title %}Restaurant{% endblock %}
+{% block extra_head %}
+<style>
+.resto-layout { display: grid; grid-template-columns: 1fr 1.5fr; gap: 20px; }
+.meal-card {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 12px 16px; border: 1px solid #e2e6ec; border-radius: 8px;
+  background: #fff; margin-bottom: 8px;
+}
+.meal-info strong { display: block; font-size: 13px; }
+.meal-info span { font-size: 12px; color: #5b6470; }
+.meal-price { font-weight: 700; font-size: 15px; color: oklch(0.45 0.13 250); }
+.meal-type-section { margin-bottom: 20px; }
+.meal-type-label {
+  font-size: 11px; font-weight: 700; text-transform: uppercase;
+  letter-spacing: 0.06em; color: #8b94a3; margin-bottom: 8px;
+  padding-bottom: 6px; border-bottom: 1px solid #f1f3f6;
+}
+.orders-section { margin-bottom: 20px; }
+.orders-section-label {
+  font-size: 11px; font-weight: 700; text-transform: uppercase;
+  letter-spacing: 0.06em; margin-bottom: 8px; padding: 6px 0;
+  border-bottom: 1px solid #f1f3f6;
+}
+.status-pill {
+  display: inline-block; padding: 3px 10px; border-radius: 20px;
+  font-size: 11px; font-weight: 700;
+}
+.pill-pending    { background: oklch(0.95 0.04 75);  color: oklch(0.48 0.14 75); }
+.pill-ready      { background: oklch(0.95 0.04 155); color: oklch(0.38 0.15 155); }
+.pill-served     { background: #f1f3f6; color: #5b6470; }
+.pill-not_served { background: oklch(0.95 0.05 25);  color: oklch(0.48 0.18 25); }
+</style>
+{% endblock %}
+{% block content %}
+<div class="page-header">
+  <div>
+    <h1>Restaurant</h1>
+    <p>
+      {% if session.role in ('admin','restaurantStaff') %}Full management view
+      {% elif session.role == 'teacher' %}Place an order and track your orders
+      {% else %}Place an order and track your order status
+      {% endif %}
+    </p>
+  </div>
+</div>
+
+<div class="resto-layout">
+
+  <!-- ── LEFT: Menu + Place Order ── -->
+  <div>
+    <strong style="font-size:15px;display:block;margin-bottom:14px;">Today's Menu</strong>
+
+    {% for meal_type in ['breakfast','lunch','dinner'] %}
+    {% set type_meals = meals | selectattr('type','equalto',meal_type) | list %}
+    {% if type_meals %}
+    <div class="meal-type-section">
+      <div class="meal-type-label">
+        {{ meal_type | capitalize }}
+      </div>
+      {% for m in type_meals %}
+      <div class="meal-card">
+        <div class="meal-info">
+          <strong>{{ m.name_en }}</strong>
+          <span>{{ m.name_fr }}</span>
+        </div>
+        <div style="display:flex;align-items:center;gap:10px;">
+          <span class="meal-price">{{ m.price }} MAD</span>
+          {% if session.role in ('admin','restaurantStaff') %}
+          <form method="POST" action="{{ url_for('meal_delete', mid=m.id) }}"
+                onsubmit="return confirm('Remove this meal?')">
+            <button type="submit" class="btn btn-sm btn-danger">Remove</button>
+          </form>
+          {% endif %}
+        </div>
+      </div>
+      {% endfor %}
+    </div>
+    {% endif %}
+    {% endfor %}
+
+    {% if not meals %}
+    <div class="empty-state"><p>No meals on the menu yet.</p></div>
+    {% endif %}
+
+    <!-- Add meal (admin/staff only) -->
+    {% if session.role in ('admin','restaurantStaff') %}
+    <div class="card" style="margin-top:16px;">
+      <strong style="font-size:13px;display:block;margin-bottom:12px;">Add Meal to Menu</strong>
+      <form method="POST" action="{{ url_for('meal_add') }}">
+        <div class="form-grid" style="grid-template-columns:1fr 1fr;">
+          <div class="form-group">
+            <label>Name (EN)</label>
+            <input type="text" name="name_en" placeholder="Lunch menu" required>
+          </div>
+          <div class="form-group">
+            <label>Name (FR)</label>
+            <input type="text" name="name_fr" placeholder="Menu déjeuner" required>
+          </div>
+          <div class="form-group">
+            <label>Price (MAD)</label>
+            <input type="number" name="price" min="0" step="0.5" placeholder="50" required>
+          </div>
+          <div class="form-group">
+            <label>Type</label>
+            <select name="type">
+              <option value="breakfast">Breakfast</option>
+              <option value="lunch">Lunch</option>
+              <option value="dinner">Dinner</option>
+            </select>
+          </div>
+        </div>
+        <button type="submit" class="btn btn-primary" style="margin-top:12px;">Add Meal</button>
+      </form>
+    </div>
+    {% endif %}
+
+    <!-- Place Order: student, teacher, admin, staff -->
+    {% if session.role in ('admin','restaurantStaff','student','teacher') %}
+    <div class="card" style="margin-top:16px;">
+      <strong style="font-size:13px;display:block;margin-bottom:12px;">Place an Order</strong>
+      <form method="POST" action="{{ url_for('order_add') }}">
+        <div class="form-grid" style="grid-template-columns:1fr 1fr;">
+
+          {# Admin/staff pick a student to order for #}
+          {% if session.role in ('admin','restaurantStaff') %}
+          <div class="form-group full">
+            <label>Student</label>
+            <select name="student_id" required>
+              {% for s in students %}
+              <option value="{{ s.id }}">{{ s.first_name }} {{ s.last_name }}</option>
+              {% endfor %}
+            </select>
+          </div>
+          {% endif %}
+
+          <div class="form-group" style="grid-column:1/-1;">
+            <label>Meal</label>
+            <select name="meal_id" required>
+              <option value="" disabled selected>Select a meal…</option>
+              {% for m in meals %}
+              <option value="{{ m.id }}">{{ m.name_en }} — {{ m.price }} MAD</option>
+              {% endfor %}
+            </select>
+          </div>
+          <div class="form-group">
+            <label>Pickup time</label>
+            <input type="time" name="time" value="12:00">
+          </div>
+        </div>
+        <button type="submit" class="btn btn-primary" style="margin-top:12px;">Place Order</button>
+      </form>
+    </div>
+    {% endif %}
+  </div>
+
+  <!-- ── RIGHT: Orders ── -->
+  <div>
+    {% if session.role in ('admin','restaurantStaff') %}
+      <!-- ── STAFF/ADMIN: full pipeline ── -->
+      <strong style="font-size:15px;display:block;margin-bottom:14px;">All Orders</strong>
+
+      {% set pending_orders    = orders | selectattr('status','equalto','pending')    | list %}
+      {% set ready_orders      = orders | selectattr('status','equalto','ready')      | list %}
+      {% set served_orders     = orders | selectattr('status','equalto','served')     | list %}
+      {% set notserved_orders  = orders | selectattr('status','equalto','not_served') | list %}
+
+      <!-- Pending -->
+      {% if pending_orders %}
+      <div class="orders-section">
+        <div class="orders-section-label" style="color:oklch(0.48 0.14 75);">Pending ({{ pending_orders|length }})</div>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>Orderer</th><th>Meal</th><th>Time</th><th>Action</th></tr></thead>
+            <tbody>
+              {% for o in pending_orders %}
+              <tr>
+                <td>{{ o.orderer_name }}</td>
+                <td>{{ o.name_en }}</td>
+                <td>{{ o.time }}</td>
+                <td>
+                  <form method="POST" action="{{ url_for('order_status', oid=o.id) }}">
+                    <input type="hidden" name="status" value="ready">
+                    <button class="btn btn-sm btn-primary">Mark Ready</button>
+                  </form>
+                </td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </div>
+      {% endif %}
+
+      <!-- Ready -->
+      {% if ready_orders %}
+      <div class="orders-section">
+        <div class="orders-section-label" style="color:oklch(0.38 0.15 155);">Ready to Serve ({{ ready_orders|length }})</div>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>Orderer</th><th>Meal</th><th>Time</th><th>Action</th></tr></thead>
+            <tbody>
+              {% for o in ready_orders %}
+              <tr>
+                <td>{{ o.orderer_name }}</td>
+                <td>{{ o.name_en }}</td>
+                <td>{{ o.time }}</td>
+                <td>
+                  <div style="display:flex;gap:6px;">
+                    <form method="POST" action="{{ url_for('order_status', oid=o.id) }}">
+                      <input type="hidden" name="status" value="served">
+                      <button class="btn btn-sm" style="background:oklch(0.95 0.04 155);color:oklch(0.38 0.15 155);border-color:oklch(0.85 0.07 155);">Served</button>
+                    </form>
+                    <form method="POST" action="{{ url_for('order_status', oid=o.id) }}">
+                      <input type="hidden" name="status" value="not_served">
+                      <button class="btn btn-sm btn-danger">Not Served</button>
+                    </form>
+                  </div>
+                </td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </div>
+      {% endif %}
+
+      <!-- Served -->
+      {% if served_orders %}
+      <div class="orders-section">
+        <div class="orders-section-label">Served ({{ served_orders|length }})</div>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>Orderer</th><th>Meal</th><th>Time</th></tr></thead>
+            <tbody>
+              {% for o in served_orders %}
+              <tr>
+                <td>{{ o.orderer_name }}</td>
+                <td>{{ o.name_en }}</td>
+                <td>{{ o.time }}</td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </div>
+      {% endif %}
+
+      <!-- Not Served -->
+      {% if notserved_orders %}
+      <div class="orders-section">
+        <div class="orders-section-label" style="color:oklch(0.48 0.18 25);">Not Served ({{ notserved_orders|length }})</div>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>Orderer</th><th>Meal</th><th>Time</th><th>Action</th></tr></thead>
+            <tbody>
+              {% for o in notserved_orders %}
+              <tr>
+                <td>{{ o.orderer_name }}</td>
+                <td>{{ o.name_en }}</td>
+                <td>{{ o.time }}</td>
+                <td>
+                  <!-- Allow re-queuing as pending -->
+                  <form method="POST" action="{{ url_for('order_status', oid=o.id) }}">
+                    <input type="hidden" name="status" value="pending">
+                    <button class="btn btn-sm">Re-queue</button>
+                  </form>
+                </td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </div>
+      {% endif %}
+
+      {% if not orders %}
+      <div class="empty-state"><p>No orders yet.</p></div>
+      {% endif %}
+
+    {% else %}
+      <!-- ── STUDENT / TEACHER: own orders only ── -->
+      <strong style="font-size:15px;display:block;margin-bottom:14px;">My Orders</strong>
+
+      {% if orders %}
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Meal</th><th>Time</th><th>Status</th></tr></thead>
+          <tbody>
+            {% for o in orders %}
+            <tr>
+              <td>
+                <strong>{{ o.name_en }}</strong>
+                <span style="display:block;font-size:12px;color:#5b6470;">{{ o.name_fr }}</span>
+              </td>
+              <td>{{ o.time }}</td>
+              <td>
+                {% if o.status == 'pending' %}
+                  <span class="status-pill pill-pending">Pending</span>
+                {% elif o.status == 'ready' %}
+                  <span class="status-pill pill-ready">Ready for pickup</span>
+                {% elif o.status == 'served' %}
+                  <span class="status-pill pill-served">Served</span>
+                {% else %}
+                  <span class="status-pill pill-not_served">Not Served</span>
+                {% endif %}
+              </td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+      {% else %}
+      <div class="empty-state" style="border:1px solid #e2e6ec;border-radius:10px;">
+        <strong>No orders yet</strong>
+        <p>Place an order from the menu on the left.</p>
+      </div>
+      {% endif %}
+    {% endif %}
+  </div>
+
+</div>
+{% endblock %}

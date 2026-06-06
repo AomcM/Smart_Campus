@@ -1,0 +1,115 @@
+{% extends "base.html" %}
+{% block page_title %}Reports{% endblock %}
+{% block extra_head %}
+<style>
+.reports-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+.bar-row { display: flex; align-items: center; gap: 12px; margin-bottom: 10px; font-size: 13px; }
+.bar-label { width: 160px; flex-shrink: 0; color: #1a1d23; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.bar-track { flex: 1; background: #f1f3f6; border-radius: 4px; height: 10px; overflow: hidden; }
+.bar-fill { height: 100%; border-radius: 4px; background: oklch(0.55 0.13 250); transition: width 0.3s; }
+.bar-val { width: 40px; text-align: right; font-weight: 600; color: #5b6470; font-size: 12px; }
+.donut-wrap { display: flex; align-items: center; gap: 24px; }
+.legend-row { display: flex; align-items: center; gap: 8px; font-size: 13px; margin-bottom: 8px; }
+.legend-dot { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; }
+.top-student { display: flex; align-items: center; gap: 12px; padding: 10px 0; border-bottom: 1px solid #f1f3f6; }
+.top-student:last-child { border-bottom: none; }
+.rank { width: 24px; height: 24px; border-radius: 50%; background: oklch(0.95 0.04 250); color: oklch(0.45 0.13 250); display: grid; place-items: center; font-size: 11px; font-weight: 700; flex-shrink: 0; }
+</style>
+{% endblock %}
+{% block content %}
+<div class="page-header">
+  <div><h1>Reports</h1><p>Analytics & academic overview</p></div>
+</div>
+
+<div class="reports-grid">
+
+  <!-- Grades by Module -->
+  <div class="card">
+    <strong style="font-size:14px;display:block;margin-bottom:20px;">Average Grade per Module</strong>
+    {% if module_avgs %}
+      {% set max_avg = module_avgs | map(attribute='avg') | max %}
+      {% for m in module_avgs %}
+      <div class="bar-row">
+        <span class="bar-label" title="{{ m.title }}">{{ m.code }} — {{ m.title[:20] }}{% if m.title|length > 20 %}…{% endif %}</span>
+        <div class="bar-track">
+          <div class="bar-fill" style="width:{{ ((m.avg or 0) / 20 * 100)|round(1) }}%;
+            background: {% if (m.avg or 0) >= 12 %}oklch(0.55 0.13 155){% elif (m.avg or 0) >= 10 %}oklch(0.55 0.13 250){% else %}oklch(0.62 0.18 25){% endif %};"></div>
+        </div>
+        <span class="bar-val">{{ "%.1f"|format(m.avg or 0) }}</span>
+      </div>
+      {% endfor %}
+    {% else %}
+    <div class="empty-state"><p>No grade data yet.</p></div>
+    {% endif %}
+  </div>
+
+  <!-- Attendance Breakdown -->
+  <div class="card">
+    <strong style="font-size:14px;display:block;margin-bottom:20px;">Attendance Breakdown</strong>
+    {% if att_summary %}
+      {% set total = att_summary | sum(attribute='cnt') %}
+      {% set colors = {'present': 'oklch(0.55 0.13 155)', 'absent': 'oklch(0.62 0.18 25)', 'late': 'oklch(0.72 0.13 75)', 'excused': 'oklch(0.55 0.13 250)'} %}
+      <!-- Simple bar chart -->
+      {% for row in att_summary %}
+      <div class="bar-row">
+        <span class="bar-label" style="text-transform:capitalize;">{{ row.status }}</span>
+        <div class="bar-track">
+          <div class="bar-fill"
+               style="width:{{ (row.cnt / total * 100)|round(1) }}%;background:{{ colors.get(row.status, 'oklch(0.55 0.13 250)') }};"></div>
+        </div>
+        <span class="bar-val">{{ row.cnt }}</span>
+      </div>
+      {% endfor %}
+      <p style="font-size:12px;color:#8b94a3;margin-top:12px;">Total records: {{ total }}</p>
+    {% else %}
+    <div class="empty-state"><p>No attendance data yet.</p></div>
+    {% endif %}
+  </div>
+
+  <!-- Top Students -->
+  <div class="card">
+    <strong style="font-size:14px;display:block;margin-bottom:20px;">Top Students (by average)</strong>
+    {% if top_students %}
+      {% for i, s in enumerate(top_students) %}
+      <div class="top-student">
+        <div class="rank">{{ i+1 }}</div>
+        <div style="flex:1;">
+          <strong style="font-size:13px;">{{ s.name }}</strong>
+        </div>
+        <span style="font-weight:700;font-size:15px;color:{% if s.avg >= 14 %}oklch(0.45 0.15 155){% elif s.avg >= 10 %}oklch(0.55 0.13 250){% else %}oklch(0.55 0.18 25){% endif %};">
+          {{ "%.2f"|format(s.avg) }}/20
+        </span>
+      </div>
+      {% endfor %}
+    {% else %}
+    <div class="empty-state"><p>No data yet.</p></div>
+    {% endif %}
+  </div>
+
+  <!-- Quick Stats -->
+  <div class="card">
+    <strong style="font-size:14px;display:block;margin-bottom:20px;">Grade Distribution</strong>
+    {% if module_avgs %}
+    <table>
+      <thead><tr><th>Module</th><th>Entries</th><th>Average</th></tr></thead>
+      <tbody>
+        {% for m in module_avgs %}
+        <tr>
+          <td><span class="badge badge-info">{{ m.code }}</span></td>
+          <td>{{ m.count }}</td>
+          <td>
+            <strong style="color:{% if (m.avg or 0) >= 12 %}oklch(0.45 0.15 155){% elif (m.avg or 0) >= 10 %}oklch(0.45 0.13 250){% else %}oklch(0.55 0.18 25){% endif %};">
+              {{ "%.2f"|format(m.avg or 0) }}/20
+            </strong>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    {% else %}
+    <div class="empty-state"><p>No grade data yet.</p></div>
+    {% endif %}
+  </div>
+
+</div>
+{% endblock %}

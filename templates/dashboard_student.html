@@ -1,0 +1,44 @@
+{% extends "base.html" %}
+{% block page_title %}Dashboard{% endblock %}
+{% block content %}
+<div class="page-header">
+  <div><h1>Welcome, {{ session.name }}</h1><p>Student overview</p></div>
+</div>
+{% if student %}
+<div class="card-grid">
+  <div class="card"><div class="stat-label">Level</div><div class="stat-value" style="font-size:22px;">{{ student.level }}</div></div>
+  <div class="card"><div class="stat-label">Speciality</div><div class="stat-value" style="font-size:22px;">{{ student.speciality }}</div></div>
+  <div class="card"><div class="stat-label">Student Code</div><div class="stat-value" style="font-size:22px;">{{ student.code }}</div></div>
+</div>
+<div class="card" style="margin-top:8px;">
+  <strong style="font-size:14px;display:block;margin-bottom:16px;">My Grades</strong>
+  {% if my_grades %}
+  <table>
+    <thead><tr><th>Module</th><th>Grade</th><th>Type</th></tr></thead>
+    <tbody>
+      {% for g in my_grades %}
+      <tr>
+        <td>{{ g.title }}</td>
+        <td>
+          <strong {% if g.value >= 10 %}style="color:oklch(0.45 0.15 155)"{% else %}style="color:oklch(0.55 0.18 25)"{% endif %}>
+            {{ g.value }}/20
+          </strong>
+        </td>
+        <td><span class="badge badge-muted">{{ g.type }}</span></td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {% else %}
+  <div class="empty-state"><p>No grades yet.</p></div>
+  {% endif %}
+</div>
+<div style="display:flex;gap:10px;margin-top:16px;">
+  <a href="{{ url_for('schedule') }}" class="btn btn-primary">My Schedule</a>
+  <a href="{{ url_for('attendance') }}" class="btn">My Attendance</a>
+  <a href="{{ url_for('restaurant') }}" class="btn">Restaurant</a>
+</div>
+{% else %}
+<div class="card"><div class="empty-state"><p>Your student profile is not linked to this account. Please contact an administrator.</p></div></div>
+{% endif %}
+{% endblock %}

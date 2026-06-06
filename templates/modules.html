@@ -1,0 +1,41 @@
+{% extends "base.html" %}
+{% block page_title %}Modules{% endblock %}
+{% block content %}
+<div class="page-header">
+  <div><h1>Modules</h1><p>{{ modules|length }} module(s)</p></div>
+  {% if session.role == 'admin' %}
+  <a href="{{ url_for('module_add') }}" class="btn btn-primary">+ Add Module</a>
+  {% endif %}
+</div>
+<div class="table-wrap">
+  {% if modules %}
+  <table>
+    <thead><tr><th>Code</th><th>Title</th><th>Credits</th><th>Semester</th><th>Teacher</th>{% if session.role == 'admin' %}<th>Actions</th>{% endif %}</tr></thead>
+    <tbody>
+      {% for m in modules %}
+      <tr>
+        <td><span class="badge badge-info">{{ m.code }}</span></td>
+        <td><strong>{{ m.title }}</strong></td>
+        <td>{{ m.credits }}</td>
+        <td>S{{ m.semester }}</td>
+        <td>{{ m.teacher_name or '—' }}</td>
+        {% if session.role == 'admin' %}
+        <td>
+          <div class="flex gap-2">
+            <a href="{{ url_for('module_edit', mid=m.id) }}" class="btn btn-sm">Edit</a>
+            <form method="POST" action="{{ url_for('module_delete', mid=m.id) }}"
+                  onsubmit="return confirm('Delete this module?')">
+              <button type="submit" class="btn btn-sm btn-danger">Delete</button>
+            </form>
+          </div>
+        </td>
+        {% endif %}
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {% else %}
+  <div class="empty-state"><strong>No modules</strong></div>
+  {% endif %}
+</div>
+{% endblock %}

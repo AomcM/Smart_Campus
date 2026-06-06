@@ -1,0 +1,46 @@
+{% extends "base.html" %}
+{% block page_title %}Teachers{% endblock %}
+{% block content %}
+<div class="page-header">
+  <div><h1>Teachers</h1><p>{{ teachers|length }} teacher(s)</p></div>
+  <div class="flex items-center gap-2">
+    <form method="GET" style="display:flex;gap:8px;">
+      <div class="search-bar">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#8b94a3" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+        <input type="text" name="q" value="{{ q }}" placeholder="Search teachers…">
+      </div>
+      <button type="submit" class="btn btn-sm">Search</button>
+    </form>
+    <a href="{{ url_for('teacher_add') }}" class="btn btn-primary">+ Add Teacher</a>
+  </div>
+</div>
+
+<div class="table-wrap">
+  {% if teachers %}
+  <table>
+    <thead><tr><th>Code</th><th>Name</th><th>Email</th><th>Department</th><th>Actions</th></tr></thead>
+    <tbody>
+      {% for t in teachers %}
+      <tr>
+        <td><span class="badge badge-muted">{{ t.code }}</span></td>
+        <td><strong>{{ t.last_name }}</strong>, {{ t.first_name }}</td>
+        <td style="color:#5b6470;">{{ t.email }}</td>
+        <td><span class="badge badge-info">{{ t.department }}</span></td>
+        <td>
+          <div class="flex gap-2">
+            <a href="{{ url_for('teacher_edit', tid=t.id) }}" class="btn btn-sm">Edit</a>
+            <form method="POST" action="{{ url_for('teacher_delete', tid=t.id) }}"
+                  onsubmit="return confirm('Delete this teacher?')">
+              <button type="submit" class="btn btn-sm btn-danger">Delete</button>
+            </form>
+          </div>
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {% else %}
+  <div class="empty-state"><strong>No teachers found</strong><p><a href="{{ url_for('teacher_add') }}">Add your first teacher</a></p></div>
+  {% endif %}
+</div>
+{% endblock %}

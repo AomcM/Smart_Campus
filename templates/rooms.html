@@ -1,0 +1,40 @@
+{% extends "base.html" %}
+{% block page_title %}Rooms{% endblock %}
+{% block content %}
+<div class="page-header">
+  <div><h1>Rooms</h1><p>{{ rooms|length }} room(s)</p></div>
+  <a href="{{ url_for('room_add') }}" class="btn btn-primary">+ Add Room</a>
+</div>
+<div class="table-wrap">
+  {% if rooms %}
+  <table>
+    <thead><tr><th>Code</th><th>Type</th><th>Capacity</th><th>Status</th><th>Actions</th></tr></thead>
+    <tbody>
+      {% for r in rooms %}
+      <tr>
+        <td><strong>{{ r.code }}</strong></td>
+        <td>{{ r.type }}</td>
+        <td>{{ r.capacity }}</td>
+        <td>
+          {% if r.status == 'available' %}<span class="badge badge-success">Available</span>
+          {% elif r.status == 'occupied' %}<span class="badge badge-warn">Occupied</span>
+          {% else %}<span class="badge badge-danger">Maintenance</span>{% endif %}
+        </td>
+        <td>
+          <div class="flex gap-2">
+            <a href="{{ url_for('room_edit', rid=r.id) }}" class="btn btn-sm">Edit</a>
+            <form method="POST" action="{{ url_for('room_delete', rid=r.id) }}"
+                  onsubmit="return confirm('Delete this room?')">
+              <button type="submit" class="btn btn-sm btn-danger">Delete</button>
+            </form>
+          </div>
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {% else %}
+  <div class="empty-state"><strong>No rooms</strong></div>
+  {% endif %}
+</div>
+{% endblock %}

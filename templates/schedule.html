@@ -1,0 +1,106 @@
+{% extends "base.html" %}
+{% block page_title %}Schedule{% endblock %}
+{% block extra_head %}
+<style>
+.schedule-grid { display: grid; grid-template-columns: 100px repeat({{ days|length }}, 1fr); gap: 1px; background: #e2e6ec; border: 1px solid #e2e6ec; border-radius: 10px; overflow: hidden; }
+.sched-header { background: #f6f7f9; padding: 10px 12px; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; color: #5b6470; }
+.sched-time { background: #f6f7f9; padding: 12px; font-size: 11px; font-weight: 600; color: #5b6470; display: flex; align-items: center; }
+.sched-cell { background: #fff; padding: 10px; min-height: 80px; display: flex; flex-direction: column; gap: 4px; }
+.sched-session { background: oklch(0.95 0.04 250); border: 1px solid oklch(0.85 0.07 250); border-radius: 6px; padding: 8px 10px; font-size: 12px; }
+.sched-session strong { display: block; color: oklch(0.45 0.13 250); font-size: 12px; }
+.sched-session span { color: #5b6470; font-size: 11px; }
+.sched-session .type-badge { display: inline-block; background: oklch(0.88 0.06 250); border-radius: 3px; padding: 1px 5px; font-size: 10px; font-weight: 600; color: oklch(0.45 0.13 250); margin-top: 3px; }
+.sched-empty { color: #cbd2db; font-size: 12px; }
+.add-session-form { background: #fff; border: 1px solid #e2e6ec; border-radius: 10px; padding: 20px; margin-top: 20px; }
+.form-row { display: flex; gap: 12px; flex-wrap: wrap; align-items: flex-end; }
+.form-row .form-group { flex: 1; min-width: 140px; }
+</style>
+{% endblock %}
+{% block content %}
+<div class="page-header">
+  <div><h1>Schedule</h1><p>Weekly timetable</p></div>
+</div>
+
+<div class="schedule-grid">
+  <div class="sched-header">Time</div>
+  {% for day in days %}
+  <div class="sched-header">{{ day }}</div>
+  {% endfor %}
+
+  {% for slot_idx, slot_label in enumerate(slots) %}
+  <div class="sched-time">{{ slot_label }}</div>
+  {% for day_idx in range(days|length) %}
+  <div class="sched-cell">
+    {% set sess = grid[day_idx][slot_idx] %}
+    {% if sess %}
+    <div class="sched-session">
+      <strong>{{ sess.module_code }}</strong>
+      <span>{{ sess.module_title }}</span><br>
+      <span>{{ sess.room_code }}</span>
+      <span class="type-badge">{{ sess.type }}</span>
+      {% if session.role == 'admin' %}
+      <form method="POST" action="{{ url_for('session_delete', sid=sess.id) }}"
+            style="margin-top:6px;" onsubmit="return confirm('Remove this session?')">
+        <button type="submit" class="btn btn-sm btn-danger" style="font-size:10px;padding:2px 7px;">✕ Remove</button>
+      </form>
+      {% endif %}
+    </div>
+    {% else %}
+    <span class="sched-empty">—</span>
+    {% endif %}
+  </div>
+  {% endfor %}
+  {% endfor %}
+</div>
+
+{% if session.role == 'admin' %}
+<div class="add-session-form">
+  <strong style="font-size:14px;display:block;margin-bottom:14px;">Add Session</strong>
+  <form method="POST" action="{{ url_for('session_add') }}">
+    <div class="form-row">
+      <div class="form-group">
+        <label>Day</label>
+        <select name="day">
+          {% for i, d in enumerate(days) %}
+          <option value="{{ i }}">{{ d }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="form-group">
+        <label>Time Slot</label>
+        <select name="slot">
+          {% for i, s in enumerate(slots) %}
+          <option value="{{ i }}">{{ s }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="form-group">
+        <label>Module</label>
+        <select name="module_id" required>
+          {% for m in modules %}
+          <option value="{{ m.id }}">{{ m.code }} — {{ m.title }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="form-group">
+        <label>Room</label>
+        <select name="room_id" required>
+          {% for r in rooms %}
+          <option value="{{ r.id }}">{{ r.code }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="form-group">
+        <label>Type</label>
+        <select name="type">
+          <option>Cours</option><option>TD</option><option>TP</option>
+        </select>
+      </div>
+      <div class="form-group" style="justify-content:flex-end;">
+        <button type="submit" class="btn btn-primary">Add</button>
+      </div>
+    </div>
+  </form>
+</div>
+{% endif %}
+{% endblock %}

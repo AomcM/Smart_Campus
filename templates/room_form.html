@@ -1,0 +1,44 @@
+{% extends "base.html" %}
+{% block page_title %}{% if room %}Edit Room{% else %}Add Room{% endif %}{% endblock %}
+{% block content %}
+<div class="page-header">
+  <div>
+    <h1>{% if room %}Edit Room{% else %}Add Room{% endif %}</h1>
+    <p><a href="{{ url_for('rooms') }}" style="color:#5b6470;text-decoration:none;">← Back to Rooms</a></p>
+  </div>
+</div>
+<div class="form-card">
+  <form method="POST">
+    <div class="form-grid">
+      <div class="form-group">
+        <label>Room Code</label>
+        <input type="text" name="code" value="{{ room.code if room else '' }}" placeholder="A-101" required>
+      </div>
+      <div class="form-group">
+        <label>Capacity</label>
+        <input type="number" name="capacity" value="{{ room.capacity if room else 30 }}" min="1" required>
+      </div>
+      <div class="form-group">
+        <label>Type</label>
+        <select name="type">
+          {% for t in ['Amphi','TD','Lab','Salle'] %}
+          <option value="{{ t }}" {% if room and room.type == t %}selected{% endif %}>{{ t }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="form-group">
+        <label>Status</label>
+        <select name="status">
+          <option value="available" {% if room and room.status == 'available' %}selected{% endif %}>Available</option>
+          <option value="occupied" {% if room and room.status == 'occupied' %}selected{% endif %}>Occupied</option>
+          <option value="maintenance" {% if room and room.status == 'maintenance' %}selected{% endif %}>Maintenance</option>
+        </select>
+      </div>
+    </div>
+    <div style="display:flex;gap:10px;margin-top:24px;">
+      <button type="submit" class="btn btn-primary">{% if room %}Save Changes{% else %}Add Room{% endif %}</button>
+      <a href="{{ url_for('rooms') }}" class="btn">Cancel</a>
+    </div>
+  </form>
+</div>
+{% endblock %}

@@ -1,0 +1,22 @@
+{% extends "base.html" %}
+{% block page_title %}Dashboard{% endblock %}
+{% block content %}
+<div class="page-header">
+  <div><h1>Restaurant Dashboard</h1><p>Today's service overview</p></div>
+  <a href="{{ url_for('restaurant') }}" class="btn btn-primary">Manage Orders</a>
+</div>
+<div class="card-grid">
+  <div class="card">
+    <div class="stat-label">Pending Orders</div>
+    <div class="stat-value" style="color:oklch(0.55 0.15 75);">{{ stats.pending }}</div>
+  </div>
+  <div class="card">
+    <div class="stat-label">Ready to Serve</div>
+    <div class="stat-value" style="color:oklch(0.45 0.15 155);">{{ stats.ready }}</div>
+  </div>
+  <div class="card">
+    <div class="stat-label">Served Today</div>
+    <div class="stat-value">{{ stats.served }}</div>
+  </div>
+</div>
+{% endblock %}

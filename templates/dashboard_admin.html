@@ -1,0 +1,65 @@
+{% extends "base.html" %}
+{% block page_title %}Dashboard{% endblock %}
+{% block content %}
+<div class="page-header">
+  <div><h1>Dashboard</h1><p>Welcome back, {{ session.name }} — here's your campus overview.</p></div>
+</div>
+
+<div class="card-grid">
+  <div class="card">
+    <div class="stat-label">Total Students</div>
+    <div class="stat-value">{{ stats.students }}</div>
+  </div>
+  <div class="card">
+    <div class="stat-label">Teachers</div>
+    <div class="stat-value">{{ stats.teachers }}</div>
+  </div>
+  <div class="card">
+    <div class="stat-label">Active Modules</div>
+    <div class="stat-value">{{ stats.modules }}</div>
+  </div>
+  <div class="card">
+    <div class="stat-label">Rooms</div>
+    <div class="stat-value">{{ stats.rooms }}</div>
+  </div>
+</div>
+
+<div style="display:grid;grid-template-columns:1fr 1fr;gap:20px;margin-top:8px;">
+  <!-- Recent grades -->
+  <div class="card">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">
+      <strong style="font-size:14px;">Recent Grades</strong>
+      <a href="{{ url_for('grades') }}" class="btn btn-ghost btn-sm">View all</a>
+    </div>
+    {% if recent_grades %}
+    <table>
+      <thead><tr><th>Student</th><th>Module</th><th>Grade</th><th>Type</th></tr></thead>
+      <tbody>
+        {% for g in recent_grades %}
+        <tr>
+          <td>{{ g.student }}</td>
+          <td style="color:#5b6470;">{{ g.module }}</td>
+          <td><strong>{{ g.value }}</strong></td>
+          <td><span class="badge badge-info">{{ g.type }}</span></td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    {% else %}
+    <div class="empty-state"><p>No grades yet.</p></div>
+    {% endif %}
+  </div>
+
+  <!-- Quick actions -->
+  <div class="card">
+    <div style="margin-bottom:16px;"><strong style="font-size:14px;">Quick Actions</strong></div>
+    <div style="display:flex;flex-direction:column;gap:10px;">
+      <a href="{{ url_for('student_add') }}" class="btn">+ Add Student</a>
+      <a href="{{ url_for('teacher_add') }}" class="btn">+ Add Teacher</a>
+      <a href="{{ url_for('module_add') }}" class="btn">+ Add Module</a>
+      <a href="{{ url_for('room_add') }}" class="btn">+ Add Room</a>
+      <a href="{{ url_for('reports') }}" class="btn btn-primary">View Reports</a>
+    </div>
+  </div>
+</div>
+{% endblock %}
